@@ -1,5 +1,7 @@
 # S.I.M.P.
 
+Compiles with [Saturn Rlng Library](https://github.com/ReyeMe/SaturnRingLib).
+
 ## Supported Formats
 
 [VFS](https://github.com/John-Spier/VFSTool) filetypes are all added to 0xFFFFFF00. Other files in a VFS will be loaded at that position into the main memory.
