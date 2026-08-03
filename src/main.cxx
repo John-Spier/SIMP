@@ -1781,7 +1781,7 @@ int32_t LoadFile(MenuItem* item, bool StartHeld)
                 }
                 file.LoadBytes(0, driverSize, vgmdriver);
                 file.Close();
-                return 0;
+                return -1;
             }
         case TYPE_DIR:
             return LoadISO9660(item->name, item->offset, StartHeld);
@@ -1808,7 +1808,7 @@ int32_t LoadFile(MenuItem* item, bool StartHeld)
                 pcmstream = new AudioStream(fileName, 0, item->size);
             }
             MusicType = item->type;
-            return 0;
+            return -1;
         case TYPE_SEQ:
         case TYPE_TON:
         case TYPE_DSPPROG:
@@ -1830,7 +1830,7 @@ int32_t LoadFile(MenuItem* item, bool StartHeld)
                 cinepakPlayer->Play();
                 delete cinepakPlayer;
             }
-            return 0;*/
+            return -1;*/
     }
     return -1;
 }
@@ -2508,11 +2508,11 @@ int32_t LoadSSF(MenuItem* item)
         MusicPlaying = true;
         WaitedAfterTurningOff68K = false;
         SetVolume(0, true);
-        return 0;
+        return -1;
     }
     
     
-    return -1;
+    return -2;
 }
 
 int32_t LoadSSF2File(const char* fileName, int32_t offset, int32_t size, uint32_t type, bool StartHeld)
@@ -2554,7 +2554,7 @@ int32_t LoadSSF2File(const char* fileName, int32_t offset, int32_t size, uint32_
         {
             delete[] buffer;
             file.Close();
-            return -1;
+            return -2;
         }
         file.Close();
     }
@@ -2589,10 +2589,10 @@ int32_t LoadSSF2File(const char* fileName, int32_t offset, int32_t size, uint32_
             break;
         default:
             delete[] buffer;
-            return -1;
+            return -2;
     }
     delete[] buffer;
-    return 0;
+    return -1;
 }
 
 int32_t LoadDriver(bool AllowReload)
@@ -2854,7 +2854,7 @@ int32_t LoadSegaDriver(const char* fileName, int32_t offset, int32_t size)
 
     file.LoadBytes(offset, size, segaDriver);
     file.Close();
-    return 0;
+    return -1;
 }
 
 int32_t LoadDriverSong(const char* fileName, int32_t offset, int32_t size, uint32_t type, bool StartHeld)
@@ -2870,8 +2870,8 @@ int32_t LoadDriverSong(const char* fileName, int32_t offset, int32_t size, uint3
         MusicType = type;
         //MusicPlaying = false;
         MusicPlaying = PlayPauseMusic(false);
-        return 0;
+        return -1;
     }
 
-    return -1;
+    return -2;
 }
