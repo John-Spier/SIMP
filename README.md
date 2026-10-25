@@ -10,6 +10,10 @@ Compiles with [Saturn Rlng Library](https://github.com/ReyeMe/SaturnRingLib).
 
 Used in VFS files created by [xsfext](https://github.com/John-Spier/xsfext) to load extracted SSF/miniSSF files into sound RAM.
 
+### SSF2 (0x23)
+
+Used in VFS files created by xsfext to load Sega driver files into sound RAM.
+
 ### MOD (0x1B)
 
 Standard MOD file, plays using [DamageX's VGM driver](https://github.com/vbt1/SndPlayEX).
@@ -36,7 +40,7 @@ Standard uncompressed AIFF file. Can be 8 or 16 bit, mono or stereo.
 
 ### SEQ (0x21)
 
-Sequenced music format, can be created with Sega tools or [mid2seq](https://github.com/jfsantos/mid2seq). Needs to have a TON file loaded to play.
+Sequenced music format, can be created with Sega tools or [mid2seq](https://github.com/John-Spier/mid2seq). Needs to have a TON file loaded to play.
 
 ### TON (0x22)
 
@@ -69,3 +73,7 @@ Cinepak video file. Can be converted from Cinepak MOV using various tools. Contr
 ### VFS (0xFE)
 
 Archive of various files, needed for playing SSF files without extraction. Can be created with VFSTool or xsfext.
+
+### VF2 (0xED)
+
+Archive of various files, with only SSF2 files shown on the list. Can be created with xsfext.
