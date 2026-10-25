@@ -15,6 +15,7 @@ enum FileType : uint32_t
     TYPE_VGM_DRIVER = TYPE_BASE + 0x1A,
     TYPE_DIR = TYPE_BASE + 0xFB,
     TYPE_VFS = TYPE_BASE + 0xFE,
+    TYPE_VFS2 = TYPE_BASE + 0xED,
     TYPE_LASTDIR = TYPE_BASE + 0xF4,
     TYPE_DIR_UP = TYPE_BASE + 0xEE,
     TYPE_AIFF = TYPE_BASE + 0x1E,
@@ -228,7 +229,7 @@ void TurnOff68K();
 void TurnOn68K();
 int32_t LoadDriver(bool AllowReload = false);
 int32_t LoadDriverSong(const char* fileName, int32_t offset, int32_t size, uint32_t type, bool StartHeld = false);
-int32_t LoadVFS(const char* fileName, int32_t baseOffset = 0, bool AllFilesValid = false, bool isLastDir = false);
+int32_t LoadVFS(const char* fileName, int32_t baseOffset = 0, bool AllFilesValid = false, bool isLastDir = false, bool isVFS2 = false);
 int32_t LoadISO9660(const char* fileName, int32_t baseOffset = 0, bool NotAllFilesValid = false, bool isLastDir = false);
 int32_t DrawFileList(int32_t highlight, int32_t offset);
 void MoveHighlight(int32_t i, int32_t numFiles, int32_t *highlight, int32_t *offset);
@@ -250,6 +251,7 @@ void DisplayHelp(SRL::Input::Digital& pad);
 void DisplaySettings(int32_t selectedItem, SRL::Input::Digital& pad);
 int32_t IncDecOSD(OSDItem type, int32_t value, bool noset, int32_t selectedItem);
 void FrameSetTempo(int32_t newTempo);
+int32_t LoadSSF2(const char* fileName, int32_t offset, int32_t size, bool StartHeld = false);
 
 /* //VECTORS STORE DATA IN HWRAM, RAW ARRAYS ARE NEEDED
 std::vector<MenuItem>* menuItems = lwnew std::vector<MenuItem>();
@@ -1712,6 +1714,25 @@ int32_t LoadISO9660(const char* fileName, int32_t baseOffset, bool NotAllFilesVa
                 file2.LoadBytes(0, driverSize, vgmdriver);
                 file2.Close();
             }
+            if (segaDriver == nullptr && menuItems[fcount].type == TYPE_TSK && !LoadDriverManual)
+            {
+                SRL::Cd::File file2(menuItems[fcount].name);
+                segaDriverSize = file2.Size.Bytes;
+                switch (DriverLocation)
+                {
+                    case 0:
+                        segaDriver = new uint8_t[segaDriverSize];
+                        break;
+                    case 1:
+                        segaDriver = lwnew uint8_t[segaDriverSize];
+                        break;
+                    case 2:
+                        segaDriver = cartnew uint8_t[segaDriverSize];
+                        break;
+                }
+                file2.LoadBytes(0, segaDriverSize, segaDriver);
+                file2.Close();
+            }
             memcpy(&menuItems[fcount].size, &buffer[i+j+14], 4);
             //menuItems[fcount].size = *reinterpret_cast<int32_t*>(&buffer[i+j+14]); //crashes, not aligned
             j += buffer[i+j];
@@ -1791,6 +1812,8 @@ int32_t LoadFile(MenuItem* item, bool StartHeld)
             return LoadVFS(fileName, item->offset, StartHeld);
         case TYPE_LASTDIR:
             return LoadVFS(fileName, item->offset, StartHeld, true);
+        case TYPE_VFS2:
+            return LoadVFS(fileName, item->offset, StartHeld, false, true);
         case TYPE_CDTRACKS:
             return LoadTOC(StartHeld);
         case TYPE_MOD:
@@ -1817,6 +1840,8 @@ int32_t LoadFile(MenuItem* item, bool StartHeld)
             return LoadSSF2File(fileName, item->offset, item->size, item->type, StartHeld);
         case TYPE_TSK:
             return LoadSegaDriver(fileName, item->offset, item->size);
+        case TYPE_SSF2:
+            return LoadSSF2(fileName, item->offset, item->size, StartHeld);
         //case TYPE_CDDA:
         /*case TYPE_CINEPAK:
             if (!SddrvsLoaded)
@@ -1835,7 +1860,7 @@ int32_t LoadFile(MenuItem* item, bool StartHeld)
     return -1;
 }
 
-int32_t LoadVFS(const char* fileName, int32_t baseOffset, bool AllFilesValid, bool isLastDir)
+int32_t LoadVFS(const char* fileName, int32_t baseOffset, bool AllFilesValid, bool isLastDir, bool isVFS2)
 {
     SRL::Cd::File file(fileName);
     VfsHeader header;
@@ -2068,18 +2093,26 @@ int32_t LoadVFS(const char* fileName, int32_t baseOffset, bool AllFilesValid, bo
                     case TYPE_MOD:
                     case TYPE_VGM:
                     case TYPE_MDX:
-                    case TYPE_VFS:
                     case TYPE_AIFF:
                     case TYPE_ADPCM:
                     case TYPE_CINEPAK:
                     case TYPE_VGM_DRIVER_MANUAL:
-                    case TYPE_SEQ:
-                    case TYPE_TON:
-                    case TYPE_DSPPROG:
-                    case TYPE_DSPRAM:
                     case TYPE_SSF2:
                         validFileList[validFiles++] = i;
                         //validFiles++;
+                        break;
+                    case TYPE_SEQ:
+                    case TYPE_MAP:
+                    case TYPE_TSK:
+                    case TYPE_TON:
+                    case TYPE_DSPPROG:
+                    case TYPE_DSPRAM:
+                    case TYPE_VFS: //makes things easier
+                    case TYPE_VFS2:
+                        if (!isVFS2)
+                        {
+                            validFileList[validFiles++] = i;
+                        }
                         break;
                     case TYPE_VGM_DRIVER:
                         if (vgmdriver == nullptr && !LoadDriverManual) //only load the first vgm driver we find
@@ -2285,6 +2318,7 @@ const char* GetFileTypeString(uint32_t type)
         case TYPE_LASTDIR:
             //return ".."; //for testing
         case TYPE_VFS:
+        case TYPE_VFS2:
             return "VFS";
         case TYPE_ADPCM:
             return "ADP";
@@ -2335,6 +2369,7 @@ const char* GetLongTypeString(uint32_t type)
         case TYPE_LASTDIR:
             //return " (Last Directory)"; //testing
         case TYPE_VFS:
+        case TYPE_VFS2:
             return " (VFS)";
         case TYPE_ADPCM:
             return " (ADPCM)";
@@ -2377,6 +2412,10 @@ uint32_t GetExtType(const char* filename)
     else if (!strncmp(ext, ".VFS", 4))
     {
         return TYPE_VFS;
+    }
+    else if (!strncmp(ext, ".VF2", 5))
+    {
+        return TYPE_VFS2;
     }
     else if (!strncmp(ext, ".MOD", 4))
     {
@@ -2560,6 +2599,9 @@ int32_t LoadSSF2File(const char* fileName, int32_t offset, int32_t size, uint32_
     }
     switch (type)
     {
+        case TYPE_TSK:
+            segaDriver = buffer;
+            return -1;
         case TYPE_MAP:
             SndIniDt indt;
             if (!StartHeld && segaDriver == nullptr)
@@ -2858,7 +2900,6 @@ int32_t LoadSegaDriver(const char* fileName, int32_t offset, int32_t size)
 }
 
 int32_t LoadDriverSong(const char* fileName, int32_t offset, int32_t size, uint32_t type, bool StartHeld)
-
 {
     //int32_t lddrv = LoadDriver();
     //SRL::Debug::Print(1, 4, "End: %d Size: %d", lddrv, size);
@@ -2874,4 +2915,34 @@ int32_t LoadDriverSong(const char* fileName, int32_t offset, int32_t size, uint3
     }
 
     return -2;
+}
+
+int32_t LoadSSF2(const char* fileName, int32_t offset, int32_t size, bool StartHeld)
+{
+    SRL::Cd::File file(fileName);
+    int32_t* buffer = nullptr;
+    switch (TempLocation)
+    {
+        case 0:
+            buffer = new int32_t[size >> 2];
+            break;
+        case 1:
+            buffer = lwnew int32_t[size >> 2];
+            break;
+        case 2:
+            buffer = cartnew int32_t[size >> 2];
+            break;
+    }
+    file.LoadBytes(offset, size, buffer);
+    file.Close();
+    for (int32_t i = 0; i < (size >> 2); i++)
+    {
+        //SRL::Debug::Print(1, 1, "Loading %s, [%d]", menuItems[buffer[i]].name, buffer[i]);
+        LoadSSF2File(currentFile[0] ? currentFile : menuItems[buffer[i] + 2].name, 
+            menuItems[buffer[i] + 2].offset, 
+            menuItems[buffer[i] + 2].size, 
+            menuItems[buffer[i] + 2].type, StartHeld);
+    }
+    delete[] buffer;
+    return -1;
 }
